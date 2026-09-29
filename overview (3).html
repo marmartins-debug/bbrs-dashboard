@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Painel de Controle — Overview BBRS</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#12181A; --panel:#1A2225; --panel-2:#212A2D;
+    --ink:#F4F1E8; --ink-dim:#8FA39B; --ink-faint:#5C6E68;
+    --gold:#D4A954; --teal:#4FA98C; --red:#C1503F; --blue:#6E9BC7; --purple:#B98FD1; --terra:#E0906B;
+    --line:rgba(244,241,232,0.08);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--bg);}
+  body{color:var(--ink);font-family:'IBM Plex Sans',sans-serif;-webkit-font-smoothing:antialiased;}
+  h1,h2,h3,.num{font-family:'Space Grotesk',sans-serif;}
+  .wrap{max-width:1220px;margin:0 auto;padding:32px 32px 60px;}
+
+  /* ---------- header + nav ---------- */
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
+  .kicker{font-size:13px;color:var(--gold);margin:0 0 6px;font-weight:500;}
+  .topbar h1{font-size:24px;font-weight:600;margin:0;letter-spacing:-0.3px;}
+  .updated{font-size:12px;color:var(--ink-faint);}
+
+  .tabs{display:flex;gap:24px;margin:0 0 18px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .tabs a{color:var(--ink-faint);text-decoration:none;font-size:14px;font-weight:500;padding:0 0 12px;position:relative;}
+  .tabs a::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:var(--gold);transform:scaleX(0);transition:transform .2s;}
+  .tabs a.active{color:var(--ink);} .tabs a.active::after{transform:scaleX(1);}
+  .tabs a:hover{color:var(--ink);}
+
+  /* ---------- filtro global ---------- */
+  .filterbar{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);padding:10px 14px;margin-bottom:18px;font-size:12.5px;color:var(--ink-dim);}
+  .filterbar select{background:var(--panel-2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 10px;font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;}
+  .filterbar .hint{margin-left:auto;color:var(--ink-faint);font-size:11.5px;}
+
+  /* ---------- grid de cards ---------- */
+  .grid{display:grid;gap:12px;margin-bottom:12px;}
+  .grid-3{grid-template-columns:1fr 1fr 1.2fr;}
+  .grid-2{grid-template-columns:1fr 1fr;}
+  .grid-2b{grid-template-columns:1.4fr 1fr;}
+
+  .card{background:var(--panel);border:1px solid var(--line);padding:16px;min-height:170px;display:flex;flex-direction:column;}
+  .card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .card-head .title{font-size:12.5px;color:var(--ink-dim);font-weight:500;}
+  .card-head a{color:var(--ink-faint);text-decoration:none;font-size:12px;}
+  .card-head a:hover{color:var(--gold);}
+  .card .num{font-size:22px;font-weight:600;}
+  .card .sub{font-size:11px;color:var(--ink-faint);margin-top:2px;}
+  .card .fill{flex:1;display:flex;flex-direction:column;justify-content:center;}
+
+  .src-tag{font-size:10px;padding:2px 8px;border-radius:10px;margin-top:auto;align-self:flex-start;font-weight:500;}
+  .src-ok{background:rgba(79,169,140,0.12);color:var(--teal);}
+  .src-pending{background:rgba(193,80,63,0.12);color:#E39184;}
+
+  /* gauge */
+  .gauge{align-self:center;width:78px;height:78px;border-radius:50%;border:9px solid var(--line);border-top-color:var(--gold);border-right-color:var(--gold);display:flex;align-items:center;justify-content:center;}
+  .gauge span{font-size:15px;font-weight:600;}
+
+  /* calendario */
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+  .cal-grid .d{aspect-ratio:1;border-radius:3px;background:var(--panel-2);}
+  .cal-legend{display:flex;gap:10px;margin-top:8px;font-size:9.5px;color:var(--ink-dim);flex-wrap:wrap;}
+  .cal-legend .dot{width:7px;height:7px;border-radius:2px;display:inline-block;margin-right:3px;}
+
+  /* donut */
+  .donut-wrap{display:flex;gap:14px;align-items:center;}
+  .donut{position:relative;width:76px;height:76px;flex-shrink:0;border-radius:50%;}
+  .donut::after{content:'';position:absolute;inset:14px;border-radius:50%;background:var(--panel);}
+  .donut-legend{font-size:11px;color:var(--ink-dim);display:flex;flex-direction:column;gap:5px;}
+  .donut-legend .dot{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:5px;}
+
+  /* placeholder (sem fonte definida) */
+  .placeholder{flex:1;display:flex;align-items:center;justify-content:center;border:1px dashed var(--line);border-radius:4px;color:var(--ink-faint);font-size:11.5px;text-align:center;padding:16px;}
+
+  /* orcamento kpis */
+  .kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;}
+  .kpi{background:var(--panel-2);padding:8px;}
+  .kpi .lbl{font-size:9.5px;color:var(--ink-dim);}
+  .kpi .num{font-size:16px;font-weight:600;margin-top:1px;}
+
+  .chart-box-sm{position:relative;height:110px;}
+  .chart-box-md{position:relative;height:140px;}
+
+  table.mini{width:100%;font-size:11.5px;color:var(--ink-dim);border-collapse:collapse;}
+  table.mini th{text-align:left;font-size:10.5px;color:var(--ink-faint);font-weight:500;padding:5px 4px;border-bottom:1px solid var(--line);}
+  table.mini td{padding:6px 4px;color:var(--ink);border-bottom:1px solid var(--line);}
+
+  footer{margin-top:24px;font-size:11.5px;color:var(--ink-faint);border-top:1px solid var(--line);padding-top:14px;}
+
+  @media (max-width:900px){
+    .grid-3, .grid-2, .grid-2b{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div>
+      <p class="kicker">Painel de Controle · BBRS</p>
+      <h1>Overview</h1>
+    </div>
+    <span class="updated" id="updated-at">—</span>
+  </div>
+
+  <nav class="tabs">
+    <a href="#" class="active">overview</a>
+    <a href="calendario.html">calendário</a>
+    <a href="eficiencia.html">eficiência</a>
+    <a href="social-dinamico.html">social</a>
+    <a href="ticketing.html">ticketing</a>
+    <a href="budget.html">budget</a>
+    <a href="gaming.html">gaming</a>
+    <a href="ibope.html">ibope</a>
+  </nav>
+
+  <div class="filterbar">
+    <select id="filter-mes"><option>Mês: todos</option></select>
+    <select id="filter-ativo"><option>Ativo: todos</option></select>
+    <span class="hint">filtro ainda não conectado aos cards — placeholder de layout</span>
+  </div>
+
+  <!-- LINHA 1: eficiencia, calendario, social -->
+  <div class="grid grid-3">
+    <div class="card" id="card-eficiencia">
+      <div class="card-head"><span class="title">Eficiência de contrato</span><a href="eficiencia.html">abrir ›</a></div>
+      <div class="fill"><div class="gauge"><span id="eficiencia-valor">—</span></div></div>
+      <div class="sub" style="text-align:center;">entregue vs. total contratado</div>
+      <span class="src-tag src-pending" id="eficiencia-src">fonte: Apps Script (Jira → Sheets) — a conectar</span>
+    </div>
+
+    <div class="card" id="card-calendario">
+      <div class="card-head"><span class="title">Calendário</span><a href="calendario.html">abrir ›</a></div>
+      <div class="cal-grid" id="cal-grid">
+        <div class="d"></div><div class="d"></div><div class="d"></div><div class="d"></div>
+        <div class="d"></div><div class="d"></div><div class="d"></div>
+      </div>
+      <div class="cal-legend">
+        <span><i class="dot" style="background:var(--teal)"></i>Social</span>
+        <span><i class="dot" style="background:var(--red)"></i>Ticketing</span>
+        <span><i class="dot" style="background:var(--purple)"></i>Gaming</span>
+      </div>
+      <span class="src-tag src-pending">fonte: Apps Script (Jira → Sheets) — a conectar</span>
+    </div>
+
+    <div class="card" style="background:var(--panel-2);" id="card-social">
+      <div class="card-head"><span class="title">Social — engajamento</span><a href="social-dinamico.html">abrir ›</a></div>
+      <div class="num" id="social-geral">—</div>
+      <div class="sub">engajamento geral (todos os contratos)</div>
+      <div class="chart-box-sm"><canvas id="mini-social"></canvas></div>
+      <span class="src-tag src-ok">fonte: planilha "Sponsorship Assets Digital Performance" (CSV)</span>
+    </div>
+  </div>
+
+  <!-- LINHA 2: ingressos, ibope -->
+  <div class="grid grid-2">
+    <div class="card" id="card-ingressos">
+      <div class="card-head"><span class="title">Ingressos por competição</span><a href="ticketing.html">abrir ›</a></div>
+      <div class="donut-wrap">
+        <div class="donut" id="donut-ingressos" style="background:conic-gradient(var(--purple) 0deg 160deg, var(--teal) 160deg 280deg, var(--red) 280deg 360deg);"></div>
+        <div class="donut-legend" id="donut-legend">
+          <span><i class="dot" style="background:var(--purple)"></i>Brasileirão — —</span>
+          <span><i class="dot" style="background:var(--teal)"></i>Copa do Brasil — —</span>
+          <span><i class="dot" style="background:var(--red)"></i>Libertadores — —</span>
+        </div>
+      </div>
+      <span class="src-tag src-pending">fonte: planilha de ticketing — a conectar</span>
+    </div>
+
+    <div class="card" id="card-ibope">
+      <div class="card-head"><span class="title">Ibope</span></div>
+      <div class="placeholder">aguardando definição da fonte de dados</div>
+      <span class="src-tag src-pending">fonte: a definir</span>
+    </div>
+  </div>
+
+  <!-- LINHA 3: orcamento, gaming -->
+  <div class="grid grid-2b">
+    <div class="card" id="card-orcamento">
+      <div class="card-head"><span class="title">Orçamento</span><a href="budget.html">abrir ›</a></div>
+      <div class="kpi-row">
+        <div class="kpi"><div class="lbl">Provisionado</div><div class="num" id="kpi-prov">—</div></div>
+        <div class="kpi"><div class="lbl">Orç. / Prov.</div><div class="num" style="color:var(--terra);" id="kpi-orc">—</div></div>
+        <div class="kpi"><div class="lbl">Real / Orç.</div><div class="num" style="color:var(--teal);" id="kpi-real">—</div></div>
+      </div>
+      <div class="chart-box-md"><canvas id="mini-orcamento"></canvas></div>
+      <span class="src-tag src-pending">fonte: planilha de orçamento — a conectar</span>
+    </div>
+
+    <div class="card" id="card-gaming">
+      <div class="card-head"><span class="title">Gaming — 3 jogos/mês</span></div>
+      <div class="placeholder">aguardando definição da fonte de dados</div>
+      <span class="src-tag src-pending">fonte: a definir</span>
+    </div>
+  </div>
+
+  <!-- LINHA 4: business -->
+  <div class="card" id="card-business">
+    <div class="card-head"><span class="title">Business</span></div>
+    <div class="placeholder">aguardando definição da fonte de dados</div>
+    <span class="src-tag src-pending">fonte: a definir</span>
+  </div>
+
+  <footer>
+    Estrutura de layout — cards com fonte marcada como "a conectar" já têm o espaço reservado; falta plugar o fetch de dados real. Cards marcados "a definir" ainda não têm fonte decidida com o time.
+  </footer>
+
+</div>
+<script>
+document.getElementById('updated-at').textContent = 'estrutura de layout — sem dados ao vivo ainda';
+
+// ============================================================
+// SOCIAL — fetch real do CSV publicado da planilha
+// "Sponsorship Assets Digital Performance" (aba de log bruto).
+// AJUSTE os nomes de coluna em COL_SOCIAL se o cabeçalho real
+// da sua planilha for diferente (confira abrindo o link no navegador).
+// ============================================================
+const CSV_URL_SOCIAL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRdiCS0dXqrt3Zp5aXUWC9CpIIEc0OsSvBvKHzbt8hPYtXPo5aXA41faGgIwmNcdQ/pub?output=csv";
+const MONTH_NAMES_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+// Nomes reais da planilha (cada linha = 1 post; MÊS vem como número 1-12).
+// SUBTAG = o "ativo/contrato" (ex: Copa do Brasil, Flamengo, Brasileirão).
+const COL_SOCIAL = { mes: 'MÊS', engagement: 'ENGAJAMENTO', ativo: 'SUBTAG' };
+
+let socialRows = []; // guarda as linhas cruas pra poder re-filtrar sem buscar de novo
+
+function renderSocial(ativoFiltro){
+  const filtradas = ativoFiltro && ativoFiltro !== 'todos'
+    ? socialRows.filter(r => r.ativo === ativoFiltro)
+    : socialRows;
+
+  const monthsPresent = [...new Set(filtradas.map(r => r.mes))].sort((a,b) => a-b);
+  const engByMonth = {};
+  monthsPresent.forEach(n => engByMonth[n] = 0);
+  let totalGeral = 0;
+  filtradas.forEach(r => {
+    totalGeral += r.engagement;
+    engByMonth[r.mes] += r.engagement;
+  });
+
+  const labels = monthsPresent.map(n => MONTH_NAMES_PT[n-1]);
+  const ultimoMes = labels[labels.length-1] || '—';
+
+  document.getElementById('social-geral').textContent = (totalGeral/1000000).toFixed(1) + 'M';
+  const tag = document.getElementById('card-social').querySelector('.src-tag');
+  tag.className = 'src-tag src-ok';
+  tag.textContent = 'fonte: planilha "Sponsorship Assets Digital Performance" (CSV) — dados até ' + ultimoMes;
+
+  if(window._miniSocialChart) window._miniSocialChart.destroy();
+  window._miniSocialChart = new Chart(document.getElementById('mini-social'), {
+    type:'line',
+    data:{ labels, datasets:[{ data: monthsPresent.map(n => engByMonth[n]), borderColor:'#D4A954', backgroundColor:'rgba(212,169,84,0.12)', fill:true, tension:0.3, pointRadius:0, borderWidth:2 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{display:false}, y:{display:false} } }
+  });
+}
+
+fetch(CSV_URL_SOCIAL)
+  .then(res => { if(!res.ok) throw new Error('HTTP ' + res.status); return res.text(); })
+  .then(text => {
+    const rows = parseCSV(text);
+    const header = rows[0].map(h => h.trim());
+    const idx = { mes: header.indexOf(COL_SOCIAL.mes), engagement: header.indexOf(COL_SOCIAL.engagement), ativo: header.indexOf(COL_SOCIAL.ativo) };
+
+    socialRows = rows.slice(1)
+      .map(r => ({ mes: parseInt(r[idx.mes], 10), engagement: Number(r[idx.engagement]) || 0, ativo: (r[idx.ativo] || '').trim() }))
+      .filter(r => r.mes >= 1 && r.mes <= 12);
+
+    // popula o filtro global de Ativo com os valores reais de SUBTAG encontrados
+    const ativos = [...new Set(socialRows.map(r => r.ativo))].filter(Boolean).sort();
+    const select = document.getElementById('filter-ativo');
+    select.innerHTML = '<option value="todos">Ativo: todos</option>' + ativos.map(a => `<option value="${a}">${a}</option>`).join('');
+    select.addEventListener('change', () => renderSocial(select.value));
+
+    renderSocial('todos');
+  })
+  .catch(err => {
+    document.getElementById('social-geral').textContent = 'erro';
+    document.getElementById('card-social').querySelector('.src-tag').className = 'src-tag src-pending';
+    document.getElementById('card-social').querySelector('.src-tag').textContent = 'falha ao buscar CSV: ' + err.message;
+  });
+
+function parseCSV(text){
+  const rows = []; let row = [], field = '', inQuotes = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(inQuotes){
+      if(c === '"'){ if(text[i+1] === '"'){ field+='"'; i++; } else inQuotes=false; }
+      else field += c;
+    } else {
+      if(c === '"') inQuotes = true;
+      else if(c === ',') { row.push(field); field=''; }
+      else if(c === '\n' || c === '\r'){
+        if(c === '\r' && text[i+1] === '\n') i++;
+        row.push(field); field='';
+        if(row.some(v=>v!=='')) rows.push(row);
+        row = [];
+      } else field += c;
+    }
+  }
+  if(field!=='' || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+// Placeholder do mini-gráfico de orçamento (será substituído pelo fetch real da planilha)
+new Chart(document.getElementById('mini-orcamento'), {
+  type:'bar',
+  data:{ labels:['Proj A','Proj B','Proj C','Proj D','Proj E'], datasets:[
+    { label:'Provisionado', data:[100,100,90,60,75], backgroundColor:'#6E9BC7', borderRadius:3 },
+    { label:'Orçado', data:[null,90,88,60,70], backgroundColor:'#E0906B', borderRadius:3 },
+    { label:'Real', data:[null,91,null,58,69], backgroundColor:'#4FA98C', borderRadius:3 }
+  ]},
+  options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+    scales:{ y:{ ticks:{color:'#8FA39B', font:{size:9}}, grid:{color:'rgba(244,241,232,0.06)'} }, x:{ ticks:{color:'#8FA39B', font:{size:9}}, grid:{display:false} } } }
+});
+</script>
+</body>
+</html>
